@@ -3,7 +3,7 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Snap & Savory", layout="centered")
 
-html_code = """
+html_code = '''
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -32,7 +32,6 @@ html_code = """
       background: #26201d;
       border-radius: 16px;
       overflow: hidden;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
     }
     canvas { display: block; width: 100%; height: 100%; }
     .hud {
@@ -48,14 +47,13 @@ html_code = """
     .overlay {
       position: absolute;
       inset: 0;
-      background: rgba(20, 16, 14, 0.92);
+      background: rgba(20, 16, 14, 0.9);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       text-align: center;
       padding: 24px;
-      overflow-y: auto;
     }
     h1 { font-size: 2.2rem; color: #ff9f1c; margin-bottom: 8px; }
     p { font-size: 1rem; color: #dcd6d0; margin-bottom: 16px; line-height: 1.5; }
@@ -63,64 +61,24 @@ html_code = """
       background: #ff9f1c;
       color: #1a1614;
       border: none;
-      padding: 14px 32px;
+      padding: 12px 28px;
       font-size: 1.05rem;
       font-weight: 800;
       border-radius: 50px;
       cursor: pointer;
-      box-shadow: 0 6px 20px rgba(255, 159, 28, 0.4);
-      transition: transform 0.1s;
     }
     button:active { transform: scale(0.95); }
-    button.secondary {
-      background: #3d3530;
-      color: #fff;
-      box-shadow: none;
-    }
-    .btn-row {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      margin-bottom: 20px;
-    }
-    .question-box {
-      background: #26201d;
-      border: 1px solid #4a403a;
-      border-radius: 16px;
-      padding: 16px;
-      margin-bottom: 20px;
-      width: 100%;
-    }
-    .question-text {
-      font-size: 1.05rem;
-      font-weight: 700;
-      color: #fff;
-      margin-bottom: 12px;
-    }
-    .snapped-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      width: 100%;
-      max-height: 240px;
-      overflow-y: auto;
-      margin-bottom: 20px;
-      padding: 8px;
+    button.no-btn { background: #4a403a; color: #fff; }
+    .row { display: flex; gap: 12px; margin-bottom: 18px; }
+    #snapped-list {
+      font-size: 2rem;
       background: #1a1614;
+      padding: 12px 16px;
       border-radius: 12px;
-      border: 1px solid #3d3530;
+      margin-bottom: 18px;
+      max-width: 100%;
+      word-wrap: break-word;
     }
-    .snapped-card {
-      background: #26201d;
-      border-radius: 10px;
-      padding: 10px 6px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      border: 1px solid #4a403a;
-    }
-    .snapped-emoji { font-size: 2.2rem; margin-bottom: 4px; }
-    .snapped-tag { font-size: 0.7rem; font-weight: 700; color: #2ec4b6; }
     .hidden { display: none !important; }
   </style>
 </head>
@@ -150,17 +108,15 @@ html_code = """
     <h1>Shift Over!</h1>
     <p id="final-score">Final Score: 0</p>
 
-    <!-- Yes / No Question Prompt -->
-    <div id="ask-snaps-box" class="question-box">
-      <div class="question-text">Do u want to see the savories u snapped?</div>
-      <div class="btn-row" style="margin-bottom: 0;">
-        <button id="yes-snaps-btn">YES</button>
-        <button id="no-snaps-btn" class="secondary">NO</button>
+    <div id="ask-box">
+      <p style="margin-bottom: 10px; font-weight: 700;">Do u want to see the savories u snapped?</p>
+      <div class="row">
+        <button id="yes-btn">YES</button>
+        <button id="no-btn" class="no-btn">NO</button>
       </div>
     </div>
 
-    <!-- Snapped Savories Results Display -->
-    <div id="snapped-results" class="snapped-grid hidden"></div>
+    <div id="snapped-list" class="hidden"></div>
 
     <button id="restart-btn">PLAY AGAIN</button>
   </div>
@@ -174,16 +130,14 @@ html_code = """
   const startScreen = document.getElementById("start-screen");
   const gameoverScreen = document.getElementById("gameover-screen");
   const finalScoreEl = document.getElementById("final-score");
-
-  // New UI elements for snapped savories
-  const askSnapsBox = document.getElementById("ask-snaps-box");
-  const yesSnapsBtn = document.getElementById("yes-snaps-btn");
-  const noSnapsBtn = document.getElementById("no-snaps-btn");
-  const snappedResults = document.getElementById("snapped-results");
+  const askBox = document.getElementById("ask-box");
+  const yesBtn = document.getElementById("yes-btn");
+  const noBtn = document.getElementById("no-btn");
+  const snappedList = document.getElementById("snapped-list");
 
   function resize() {
-    canvas.width = canvas.parentElement.clientWidth;
-    canvas.height = canvas.parentElement.clientHeight;
+    canvas.width = canvas.parentElement.clientWidth || 360;
+    canvas.height = canvas.parentElement.clientHeight || 640;
   }
   window.addEventListener("resize", resize);
   resize();
@@ -195,7 +149,7 @@ html_code = """
   let lives = 3;
   let speed = 3.5;
   let items = [];
-  let snappedHistory = []; // Stores every savory you snapped
+  let snappedSavories = [];
   let spawnTimer = 0;
   let flashAlpha = 0;
   let feedbackText = "";
@@ -243,10 +197,8 @@ html_code = """
     if (lives <= 0) {
       isRunning = false;
       finalScoreEl.textContent = `Final Score: ${score}`;
-      
-      // Reset the Yes/No prompt and hide previous gallery on Game Over
-      askSnapsBox.classList.remove("hidden");
-      snappedResults.classList.add("hidden");
+      askBox.classList.remove("hidden");
+      snappedList.classList.add("hidden");
       gameoverScreen.classList.remove("hidden");
     }
   }
@@ -277,21 +229,14 @@ html_code = """
     targetItem.snapped = true;
 
     if (targetItem.isSavory) {
-      const isPerfect = minDist < 22;
-      if (isPerfect) {
+      snappedSavories.push(targetItem.emoji);
+      if (minDist < 22) {
         score += 20;
         showFeedback("PERFECT SNAP! +20", "#2ec4b6");
       } else {
         score += 10;
         showFeedback("SAVORY! +10", "#ff9f1c");
       }
-
-      // Record the snapped savory dish
-      snappedHistory.push({
-        emoji: targetItem.emoji,
-        rating: isPerfect ? "PERFECT +20" : "GOOD +10"
-      });
-
       scoreEl.textContent = score;
       speed = Math.min(10, 3.5 + score * 0.015);
     } else {
@@ -299,31 +244,16 @@ html_code = """
     }
   }
 
-  // Handle "YES" click to display snapped savories
-  yesSnapsBtn.addEventListener("click", () => {
-    askSnapsBox.classList.add("hidden");
-    snappedResults.innerHTML = "";
-    snappedResults.classList.remove("hidden");
-
-    if (snappedHistory.length === 0) {
-      snappedResults.innerHTML = `<div style="grid-column: span 3; color: #dcd6d0; padding: 12px;">You didn't snap any savories this shift!</div>`;
-      return;
-    }
-
-    snappedHistory.forEach((snap) => {
-      const card = document.createElement("div");
-      card.className = "snapped-card";
-      card.innerHTML = `
-        <div class="snapped-emoji">${snap.emoji}</div>
-        <div class="snapped-tag">${snap.rating}</div>
-      `;
-      snappedResults.appendChild(card);
-    });
+  yesBtn.addEventListener("click", () => {
+    askBox.classList.add("hidden");
+    snappedList.textContent = snappedSavories.length > 0
+      ? snappedSavories.join(" ")
+      : "No savories snapped!";
+    snappedList.classList.remove("hidden");
   });
 
-  // Handle "NO" click
-  noSnapsBtn.addEventListener("click", () => {
-    askSnapsBox.classList.add("hidden");
+  noBtn.addEventListener("click", () => {
+    askBox.classList.add("hidden");
   });
 
   canvas.addEventListener("pointerdown", handleSnap);
@@ -336,7 +266,7 @@ html_code = """
     lives = 3;
     speed = 3.5;
     items = [];
-    snappedHistory = []; // Clear snapped savories for new shift
+    snappedSavories = [];
     spawnTimer = 0;
     flashAlpha = 0;
     feedbackTimer = 0;
@@ -358,3 +288,81 @@ html_code = """
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const zone = getTargetZone();
 
+    const beltY = canvas.height / 2 - 55;
+    ctx.fillStyle = "#362f2b";
+    ctx.fillRect(0, beltY, canvas.width, 110);
+
+    beltOffset = (beltOffset + speed) % 40;
+    ctx.strokeStyle = "#4a403a";
+    ctx.lineWidth = 4;
+    for (let x = -40 + beltOffset; x < canvas.width; x += 40) {
+      ctx.beginPath();
+      ctx.moveTo(x, beltY);
+      ctx.lineTo(x, beltY + 110);
+      ctx.stroke();
+    }
+
+    spawnTimer++;
+    const spawnInterval = Math.max(42, Math.floor(110 - speed * 6));
+    if (spawnTimer >= spawnInterval) {
+      spawnItem();
+      spawnTimer = 0;
+    }
+
+    ctx.font = "54px serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    for (let i = items.length - 1; i >= 0; i--) {
+      const item = items[i];
+      item.x += speed;
+
+      ctx.fillStyle = item.snapped ? "rgba(255,255,255,0.2)" : "#f4f1de";
+      ctx.beginPath();
+      ctx.arc(item.x, item.y, 38, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.globalAlpha = item.snapped ? 0.35 : 1;
+      ctx.fillText(item.emoji, item.x, item.y + 4);
+      ctx.globalAlpha = 1;
+
+      if (!item.snapped && !item.missed && item.x > zone.x + zone.w + 30) {
+        item.missed = true;
+        if (item.isSavory) {
+          loseLife("MISSED SAVORY!");
+        }
+      }
+
+      if (item.x > canvas.width + 60) {
+        items.splice(i, 1);
+      }
+    }
+
+    ctx.strokeStyle = "#ff9f1c";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(zone.x, zone.y, zone.w, zone.h);
+
+    ctx.strokeStyle = "rgba(255, 159, 28, 0.4)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(zone.centerX, zone.y + 10);
+    ctx.lineTo(zone.centerX, zone.y + zone.h - 10);
+    ctx.stroke();
+
+    if (feedbackTimer > 0) {
+      ctx.fillStyle = feedbackColor;
+      ctx.font = "bold 22px sans-serif";
+      ctx.fillText(feedbackText, canvas.width / 2, zone.y - 30 - (40 - feedbackTimer) * 0.5);
+      feedbackTimer--;
+    }
+
+    if (flashAlpha > 0) {
+      ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      flashAlpha -= 0.08;
+    }
+
+    requestAnimationFrame(loop);
+  }
+</script>
+</body>
