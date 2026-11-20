@@ -92,7 +92,6 @@ html_code = '''
     <div id="lives">❤️❤️❤️</div>
   </div>
 
-  <!-- Start Screen -->
   <div id="start-screen" class="overlay">
     <h1>📸 Snap & Savory</h1>
     <p>
@@ -103,13 +102,12 @@ html_code = '''
     <button id="start-btn">START SHIFT</button>
   </div>
 
-  <!-- Game Over Screen -->
   <div id="gameover-screen" class="overlay hidden">
     <h1>Shift Over!</h1>
     <p id="final-score">Final Score: 0</p>
 
     <div id="ask-box">
-      <p style="margin-bottom: 10px; font-weight: 700;">Do u want to see the savories u snapped?</p>
+      <p style="margin-bottom: 10px; font-weight: 700;">Do u want to see the savories u clicked?</p>
       <div class="row">
         <button id="yes-btn">YES</button>
         <button id="no-btn" class="no-btn">NO</button>
@@ -248,7 +246,7 @@ html_code = '''
     askBox.classList.add("hidden");
     snappedList.textContent = snappedSavories.length > 0
       ? snappedSavories.join(" ")
-      : "No savories snapped!";
+      : "No savories clicked!";
     snappedList.classList.remove("hidden");
   });
 
@@ -366,3 +364,7 @@ html_code = '''
   }
 </script>
 </body>
+</html>
+'''
+
+components.html(html_code, height=750)
